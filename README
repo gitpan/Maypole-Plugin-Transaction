@@ -1,0 +1,68 @@
+NAME
+    Maypole::Plugin::Transaction - Transaction handling for Maypole
+
+SYNOPSIS
+    Simple transaction:
+
+        package MyApp;
+
+        use Maypole::Application qw(Transaction);
+
+        # You should AutoCommit by default
+        MyApp->setup( 'dbi:Pg:dbname=myapp', 'myuser', 'mypass',
+            { AutoCommit => 1 } );
+
+        sub do_something : Exported {
+            my ( $self, $r ) = @_;
+            my $h = CGI::Untaint->new( %{ $r->{params} } );
+            warn 'Transaction failed!'
+                unless $r->transaction( sub { $self->create_from_cgi($h) } );
+        }
+
+    Advanced transaction with exception handling:
+
+        package MyApp;
+
+        use Maypole::Application qw(Transaction);
+        use Maypole::Constants;
+        use Exception::Class TransactionException =>
+          { description => 'Transaction failed, so rolled back' };
+
+        # You should AutoCommit by default
+        MyApp->setup( 'dbi:Pg:dbname=myapp', 'myuser', 'mypass',
+            { AutoCommit => 1 } );
+        MyApp->config->transaction_exception('TransactionException');
+
+        sub exception {
+            my ( $r, $e ) = @_;
+            if ( $e->isa('TransactionException') ) {
+                warn "Transaction failed: $e";
+                # Do something to correct the failure
+                return OK;
+            }
+            return ERROR;
+        }
+
+        sub do_something : Exported {
+            my ( $self, $r ) = @_;
+            my $h = CGI::Untaint->new( %{ $r->{params} } );
+            $r->transaction( sub { $self->create_from_cgi($h) } );
+        }
+
+DESCRIPTION
+    Commit, Rollback and throwing Exceptions!
+
+    Note that you need Maypole 2.0 or newer to use this module!
+
+  transaction
+        my $status = $r->transaction( $coderef, $exception );
+
+    Returns true or false, the exception argument is optional.
+
+AUTHOR
+    Sebastian Riedel, "sri@oook.de"
+
+LICENSE
+    This library is free software. You can redistribute it and/or modify it
+    under the same terms as perl itself.
+
